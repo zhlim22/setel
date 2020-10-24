@@ -70,8 +70,10 @@ class TestAppium(unittest.TestCase):
         # Ensure login is successful by checking if Today is shown
         textview = self.driver.find_elements_by_class_name("android.widget.TextView")
         listtext = [x.text for x in textview]
-        result = listtext.index("Today")
-        self.assertTrue(result >= 0, "Today page not shown after login, login may be unsuccessful")
+        try:
+            result = listtext.index("Today")
+        except ValueError:
+            self.fail("Today page not shown after login, login may be unsuccessful")
     
     def tearDown(self):
         self.driver.quit()
@@ -94,8 +96,47 @@ class TestAppium(unittest.TestCase):
         # Get the list of projects and verify Test Project is created with API
         projects = self.driver.find_elements_by_id("com.todoist:id/name")
         project_texts = [x.text for x in projects]
-        result = project_texts.index("Test Project")
-        self.assertTrue(result >= 0, "Test Project not found under Projects, it may not been created successfully with the API")
+        try:
+            project_index = project_texts.index("Test Project")
+        except ValueError:
+            self.fail("Test Project not found under Projects, it may not been created successfully with the API")
+
+        # Click on Test Project
+        test_project = self.driver.find_elements_by_id("com.todoist:id/name")[project_index]
+        test_project.click()
+
+        # Click on Add button to create Task
+        btn_add = self.driver.find_element_by_id("com.todoist:id/fab")
+        btn_add.click()
+
+        # Enter task name: Test task
+        field_msg = self.driver.find_element_by_id("android:id/message")
+        field_msg.send_keys("Test task")
+
+        # Click on Send button
+        btn_send = self.driver.find_element_by_id("android:id/button1")
+        btn_send.click()
+        self.driver.back()
+
+        # Wait for task to be updated in server before calling API
+        sleep(5)
+
+        # Call API to retrieve active task
+        return_value_task = requests.get(
+            "https://api.todoist.com/rest/v1/tasks",
+            params={
+                "project_id": int(self.__class__.project_id)
+            },
+            headers={
+                "Authorization": "Bearer %s" % self.__class__.token
+            }).json()
+        
+        # Verify that Test task is created successfully
+        list_content = [y["content"] for y in return_value_task]
+        try:
+            result = list_content.index("Test task")
+        except ValueError:
+            self.fail("Test task not found under Test Project")
 
 if __name__ == '__main__':
     unittest.main()
