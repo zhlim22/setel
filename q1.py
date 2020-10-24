@@ -42,6 +42,36 @@ class TestAppium(unittest.TestCase):
 
         # Setting value of implicit wait time when locating elements
         self.driver.implicitly_wait(5)
+
+        # Logging into the application
+        # Click on Continue with email button on welcome screen
+        btn_login_with_email = self.driver.find_element_by_id("com.todoist:id/btn_welcome_continue_with_email")
+        btn_login_with_email.click()
+
+        # Enter user email
+        field_email = self.driver.find_element_by_id("com.todoist:id/email_exists_input")
+        field_email.send_keys("dblee1111@gmail.com")
+
+        # Click on Continue with email button on login screen
+        btn_continue_with_email = self.driver.find_element_by_id("com.todoist:id/btn_continue_with_email")
+        btn_continue_with_email.click()
+
+        # Enter password
+        field_password = self.driver.find_element_by_id("com.todoist:id/log_in_password")
+        field_password.send_keys("abc12345")
+
+        # Click on login button
+        btn_login = self.driver.find_element_by_id("com.todoist:id/btn_log_in")
+        btn_login.click()
+
+        # Wait 5s for application to load
+        sleep(5)
+
+        # Ensure login is successful by checking if Today is shown
+        textview = self.driver.find_elements_by_class_name("android.widget.TextView")
+        listtext = [x.text for x in textview]
+        result = listtext.index("Today")
+        self.assertTrue(result >= 0, "Today page not shown after login, login may be unsuccessful")
     
     def tearDown(self):
         self.driver.quit()
