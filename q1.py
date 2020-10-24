@@ -76,5 +76,26 @@ class TestAppium(unittest.TestCase):
     def tearDown(self):
         self.driver.quit()
 
+    def test_create_project_and_task(self):
+        # Click on the Change current view button
+        btn_change_current_view = self.driver.find_element_by_accessibility_id("Change the current view")
+        btn_change_current_view.click()
+
+        # Wait for the side bar to load
+        sleep(3)
+
+        # Click on the expand button for Projects
+        expand_project = self.driver.find_elements_by_id("com.todoist:id/collapse")[0]
+        expand_project.click()
+
+        # Wait for all the Projects to be shown
+        sleep(2)
+
+        # Get the list of projects and verify Test Project is created with API
+        projects = self.driver.find_elements_by_id("com.todoist:id/name")
+        project_texts = [x.text for x in projects]
+        result = project_texts.index("Test Project")
+        self.assertTrue(result >= 0, "Test Project not found under Projects, it may not been created successfully with the API")
+
 if __name__ == '__main__':
     unittest.main()
